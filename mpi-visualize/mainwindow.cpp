@@ -293,7 +293,7 @@ void MainWindow::realtimeDataSlot()
                         }
                         request_image_data = MPI_REQUEST_NULL;
                     }
-                    MPI_Irecv(&image_data, SIZE_X*SIZE_Y, MPI_IMAGE_DATATYPE, 0, MPI_TAG_IMAGE_DATA, intercomm, &request_image_data);
+                    MPI_Irecv(image_data, SIZE_X*SIZE_Y, MPI_IMAGE_DATATYPE, 0, MPI_TAG_IMAGE_DATA, intercomm, &request_image_data);
                 }
                 else // if (status.MPI_TAG == MPI_TAG_MESSAGE_QUIT)
                 {
