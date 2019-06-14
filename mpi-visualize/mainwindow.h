@@ -1,6 +1,6 @@
 /**************************************************************************//**
  * @file mainwindow.h
- * @brief Main windows and MPI client setup
+ * @brief Main window and MPI client setup
  *
  * This file contains the class declaration for the MainWindow class.
  * @author Daniel Queteschiner
@@ -56,6 +56,7 @@ private:
     MPI_Request request_image_data;
     QString port_name;
     int connected;
+    int mpiError;
 };
 
 #endif // MAINWINDOW_H

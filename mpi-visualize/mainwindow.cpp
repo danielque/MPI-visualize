@@ -46,16 +46,25 @@ MainWindow::MainWindow(QWidget *parent) :
         }
         inputFile.close();
 
-        MPI_Init(0,0);
+        mpiError = MPI_Init(0,0);
 
-        // must only be called after the MPI_Comm_accept call has been made by the MPI job acting as the server
-        if (MPI_Comm_connect(port_name.toStdString().c_str(), MPI_INFO_NULL, 0, MPI_COMM_SELF, &intercomm) != MPI_SUCCESS)
+        if (mpiError != MPI_SUCCESS)
         {
-            std::cerr << "Failed to connected to mpi port" << std::endl << std::flush;
+            std::cerr << "Failed to initialize MPI" << std::endl << std::flush;
         }
         else
         {
-            connected = 1;
+            // must only be called after the MPI_Comm_accept call has been made by the MPI job acting as the server
+            mpiError = MPI_Comm_connect(port_name.toStdString().c_str(), MPI_INFO_NULL, 0, MPI_COMM_SELF, &intercomm);
+
+            if (mpiError != MPI_SUCCESS)
+            {
+                std::cerr << "Failed to connected to mpi port" << std::endl << std::flush;
+            }
+            else
+            {
+                connected = 1;
+            }
         }
     }
 
@@ -79,17 +88,29 @@ MainWindow::~MainWindow()
         {
             std::cout << "Sending disconnect message to server program" << std::endl << std::flush;
             int message_type = 1;
-            MPI_Ssend(&message_type, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm);
+            mpiError = MPI_Ssend(&message_type, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm);
+            if (mpiError != MPI_SUCCESS)
+            {
+                std::cerr << "Failed to send disconnect message" << std::endl << std::flush;
+            }
 
             receivePendingMessages();
 
             std::cout << "Disconnecting ..." << std::endl << std::flush;
-            MPI_Comm_disconnect(&intercomm);
+            mpiError = MPI_Comm_disconnect(&intercomm);
+            if (mpiError != MPI_SUCCESS)
+            {
+                std::cerr << "Failed disconnect comm" << std::endl << std::flush;
+            }
             connected = 0;
             std::cout << "Disconnected" << std::endl << std::flush;
         }
         std::cout << "Finalizing MPI ..." << std::endl << std::flush;
-        MPI_Finalize();
+        mpiError = MPI_Finalize();
+        if (mpiError != MPI_SUCCESS)
+        {
+            std::cerr << "Failed to finalize MPI" << std::endl << std::flush;
+        }
         std::cout << "MPI finalized" << std::endl << std::flush;
     }
     delete ui;
