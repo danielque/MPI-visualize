@@ -54,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent) :
         }
     }
 
+    image_data = new image_datatype[SIZE_X * SIZE_Y];
+
     setupColorMapDemo(ui->customPlot);
     setWindowTitle("QCustomPlot: " + demoName);
     statusBar()->clearMessage();
@@ -87,6 +89,7 @@ MainWindow::~MainWindow()
         std::cout << "MPI finalized" << std::endl << std::flush;
     }
     delete ui;
+    delete[] image_data;
 }
 
 /* ------------------------------------------------------------------------- */

@@ -51,9 +51,9 @@ int main(int argc, char** argv)
 
     const int nx = SIZE_X;
     const int ny = SIZE_Y_HALF;
-    double image_part_base[SIZE_X*SIZE_Y_HALF] = {0.};
-    image_datatype image_part[SIZE_X*SIZE_Y_HALF] = {0};
-    image_datatype image_data[SIZE_X*SIZE_Y] = {0};
+    double* image_part_base = 0;
+    image_datatype* image_part = 0;
+    image_datatype* image_data = 0;
 
     // initialize the MPI environment
     MPI_Init(&argc, &argv);
@@ -101,6 +101,10 @@ int main(int argc, char** argv)
     {
         connected = mpiConnect(port_name, &intercomm);
     }
+
+    image_part_base = (double*)malloc(sizeof(double) * SIZE_X * SIZE_Y_HALF);
+    image_part = (image_datatype*)malloc(sizeof(image_datatype) * SIZE_X * SIZE_Y_HALF);
+    image_data = (image_datatype*)malloc(sizeof(image_datatype) * SIZE_X * SIZE_Y);
 
     // compute base data
     {
@@ -224,6 +228,10 @@ int main(int argc, char** argv)
     printf("Finalizing MPI ...\n"); fflush(stdout);
     MPI_Finalize();
     printf("MPI finalized\n"); fflush(stdout);
+
+    free(image_part_base);
+    free(image_part);
+    free(image_data);
 
     return 0;
 }

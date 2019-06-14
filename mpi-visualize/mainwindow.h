@@ -51,7 +51,7 @@ private:
     Ui::MainWindow *ui;
     QString demoName;
     QTimer dataTimer;
-    image_datatype image_data[SIZE_X*SIZE_Y];
+    image_datatype *image_data;
     MPI_Comm intercomm;
     QString port_name;
     int connected;
