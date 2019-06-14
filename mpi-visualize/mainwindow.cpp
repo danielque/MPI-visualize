@@ -26,7 +26,11 @@ MainWindow::MainWindow(QWidget *parent) :
     connected = 0;
 
 #if defined (_WIN32) || defined (_WIN64)
-    QString fileName("C:/mpiportname.txt");
+    QString path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (path.isEmpty()) std::cerr << "Failed to obtain file path" << std::endl << std::flush;
+    QString fileName(path);
+    fileName.append(QDir::separator());
+    fileName.append("mpiportname.txt");
 #elif defined (__linux__ )
     QString fileName("/tmp/mpiportname.txt");
 #endif

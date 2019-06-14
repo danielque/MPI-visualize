@@ -16,6 +16,11 @@
 #include <string.h>
 #include <math.h>
 #include <mpi.h>
+#if defined (_WIN32) || defined (_WIN64)
+#include <Windows.h>
+#include <tchar.h>
+#include <ShlObj.h>
+#endif
 
 typedef short image_datatype;           // char // short // double
 #define IMAGE_DATA_SCALE 32767.0        // (127.) // (32767) // (1.0)
@@ -241,25 +246,61 @@ int main(int argc, char** argv)
 int mpiConnect(char* port_name, MPI_Comm *comm)
 {
     // write port name to file
+    FILE* port_file = 0;
 #if defined (_WIN32) || defined (_WIN64)
-    char file_name[] = "C:/mpiportname.txt";
+    int csidl = CSIDL_APPDATA;
+    TCHAR path[_MAX_PATH];
+    WIN32_FIND_DATA findFileData;
+    HANDLE hFindFile = INVALID_HANDLE_VALUE;
+    TCHAR appName[] = TEXT("mpi-server-client");
+    TCHAR file_name[_MAX_PATH] = {0};
+
+    if (FAILED(SHGetFolderPath(NULL, csidl | CSIDL_FLAG_CREATE, NULL, 0, path)))
+    {
+        printf("Failed to get known folder path (%x)\n", csidl);
+    }
+    else
+    {
+        _tcscat(path, TEXT("\\"));
+        _tcscat(path, appName);
+    }
+
+    hFindFile = FindFirstFile(path, &findFileData);
+
+    if (hFindFile == INVALID_HANDLE_VALUE)
+    {
+        if (!CreateDirectory(path, NULL))
+        {
+            printf("Failed to create directory %ls", path); fflush(stdout);
+            return 0;
+        }
+    }
+    else
+    {
+        FindClose(hFindFile);
+    }
+
+    _tcscpy(file_name, path);
+    _tcscat(file_name, TEXT("\\"));
+    _tcscat(file_name, TEXT("mpiportname.txt"));
+    port_file = _tfopen(file_name, TEXT("wt"));
 #elif defined (__linux__ )
     char file_name[] = "/tmp/mpiportname.txt";
+    port_file = fopen(file_name, "wt");
 #endif
-    FILE *port_file = fopen(file_name,"wt");
 
     if (port_file)
     {
         // open port
-        printf("Opening port for intercomm\n");
+        printf("Opening port for intercomm\n"); fflush(stdout);
         MPI_Open_port(MPI_INFO_NULL, port_name);
 
-        fprintf(port_file,"%s",port_name);fflush(stdout);
+        fprintf(port_file, "%s", port_name); fflush(stdout);
         fclose(port_file);
     }
     else
     {
-        printf("Failed to open file %s",file_name);fflush(stdout);
+        printf("Failed to open file\n"); fflush(stdout);
         return 0;
     }
 
