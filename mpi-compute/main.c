@@ -321,9 +321,6 @@ int mpiConnect(char* port_name, MPI_Comm* comm)
 
 void mpiDisconnect(const char* port_name, MPI_Comm* comm)
 {
-    MPI_Close_port(port_name);
-    printf("Port closed\n"); fflush(stdout);
-
     if (*comm == MPI_COMM_NULL)
     {
         printf("Communicator is already NULL!\n"); fflush(stdout);
@@ -334,6 +331,9 @@ void mpiDisconnect(const char* port_name, MPI_Comm* comm)
     MPI_Comm_disconnect(comm);
     *comm = MPI_COMM_NULL;
     printf("Disconnected\n"); fflush(stdout);
+
+    MPI_Close_port(port_name);
+    printf("Port closed\n"); fflush(stdout);
 }
 
 /* ------------------------------------------------------------------------- */
