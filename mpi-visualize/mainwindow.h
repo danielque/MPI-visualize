@@ -53,6 +53,7 @@ private:
     QTimer dataTimer;
     image_datatype *image_data;
     MPI_Comm intercomm;
+    MPI_Request request_image_data;
     QString port_name;
     int connected;
 };

@@ -35,7 +35,8 @@ typedef short image_datatype;           // char // short // double
 
 #define PROGRAMM_DURATION 15.0
 
-static MPI_Request diconnect_request = MPI_REQUEST_NULL;
+static MPI_Request recv_disconnect_request = MPI_REQUEST_NULL;
+static MPI_Request send_image_data_request = MPI_REQUEST_NULL;
 
 /* ------------------------------------------------------------------------- */
 
@@ -127,13 +128,11 @@ int main(int argc, char** argv)
                 image_part_base[xIndex + yIndex * nx] = z;
             }
         }
-
     }
 
     {
         int frames = 0;
         int sent_frames = 0;
-        MPI_Request request = MPI_REQUEST_NULL;
         double time, start_time, end_time, last_send_time;
 
         start_time = MPI_Wtime();  // get current time
@@ -176,7 +175,7 @@ int main(int argc, char** argv)
                     if (connected)
                     {
                         // wait for previous data to be received
-                        MPI_Wait(&request, MPI_STATUS_IGNORE);
+                        MPI_Wait(&send_image_data_request, MPI_STATUS_IGNORE);
 
                         // update connection status
                         connected = mpiIsIntercommAlive(port_name, &intercomm);
@@ -184,7 +183,7 @@ int main(int argc, char** argv)
                         if (connected)
                         {
                             // send new data
-                            MPI_Isend(image_data, SIZE_X*SIZE_Y, MPI_IMAGE_DATATYPE, 0, MPI_TAG_IMAGE_DATA, intercomm, &request);
+                            MPI_Isend(image_data, SIZE_X * SIZE_Y, MPI_IMAGE_DATATYPE, 0, MPI_TAG_IMAGE_DATA, intercomm, &send_image_data_request);
                             ++sent_frames;
                         }
                     }
@@ -201,6 +200,12 @@ int main(int argc, char** argv)
 
             ++frames;
         } // end loop
+
+        if (world_rank == 0 && connected)
+        {
+            printf("Waiting for last image send to be received ...\n"); fflush(stdout);
+            MPI_Wait(&send_image_data_request, MPI_STATUS_IGNORE);
+        }
 
         printf("%d: end time = %lf, frames %d (sent %d), FPS %lf, sFPS %lf\n",
                world_rank, time,
@@ -327,6 +332,19 @@ void mpiDisconnect(const char* port_name, MPI_Comm* comm)
         return;
     }
 
+    if (send_image_data_request != MPI_REQUEST_NULL)
+    {
+        printf("Cancelling send_image_data request!\n"); fflush(stdout);
+        MPI_Cancel(&send_image_data_request);
+        MPI_Request_free(&send_image_data_request);
+    }
+    if (recv_disconnect_request != MPI_REQUEST_NULL)
+    {
+        printf("Cancelling recv_disconnect request!\n"); fflush(stdout);
+        MPI_Cancel(&recv_disconnect_request);
+        MPI_Request_free(&recv_disconnect_request);
+    }
+
     printf("Disconnecting ...\n"); fflush(stdout);
     MPI_Comm_disconnect(comm);
     *comm = MPI_COMM_NULL;
@@ -351,12 +369,12 @@ int mpiIsIntercommAlive(const char* port_name, MPI_Comm* comm)
     {
         int flag;
 
-        if (diconnect_request == MPI_REQUEST_NULL)
+        if (recv_disconnect_request == MPI_REQUEST_NULL)
         {
             // wait for a quit message
             static int message = -1;
 
-            if (MPI_Irecv(&message, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm, &diconnect_request) != MPI_SUCCESS)
+            if (MPI_Irecv(&message, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm, &recv_disconnect_request) != MPI_SUCCESS)
             {
                 printf("MPI_Irecv communication failed!\n"); fflush(stdout);
                 *comm = MPI_COMM_NULL;
@@ -366,7 +384,7 @@ int mpiIsIntercommAlive(const char* port_name, MPI_Comm* comm)
             return 1;
         }
 
-        if (MPI_Test(&diconnect_request, &flag, MPI_STATUS_IGNORE) != MPI_SUCCESS)
+        if (MPI_Test(&recv_disconnect_request, &flag, MPI_STATUS_IGNORE) != MPI_SUCCESS)
         {
             printf("MPI_Test communication failed!\n"); fflush(stdout);
             *comm = MPI_COMM_NULL;

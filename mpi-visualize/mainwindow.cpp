@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget *parent) :
     setGeometry(400, 250, 542, 390);
 
     intercomm = MPI_COMM_NULL;
+    request_image_data = MPI_REQUEST_NULL;
     connected = 0;
 
 #if defined (_WIN32) || defined (_WIN64)
@@ -99,53 +100,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::receivePendingMessages()
 {
-    while (true)
+    if (request_image_data != MPI_REQUEST_NULL)
     {
-        int messageAvailable = 0;
-        MPI_Status status;
-        if (MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, intercomm, &messageAvailable, &status) != MPI_SUCCESS)
-        {
-            std::cerr << "Error probing for MPI message, process exiting!" << std::endl << std::flush;
-            MPI_Abort(intercomm, 1);
-            break;
-        }
-
-        if (messageAvailable)
-        {
-            int count;
-            int err = MPI_Get_count(&status, MPI_IMAGE_DATATYPE, &count);
-
-            if(count == MPI_UNDEFINED || err != MPI_SUCCESS)
-            {
-                err = MPI_Get_count(&status, MPI_INT, &count);
-                if(count != MPI_UNDEFINED && err == MPI_SUCCESS)
-                {
-                    std::cout << "Receiving queued int message ..." << std::endl << std::flush;
-                    int *buf = new int[count];
-                    MPI_Recv(buf, count, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, intercomm, &status);
-                    delete [] buf;
-                }
-                else
-                {
-                    MPI_Abort(intercomm, -12);
-                }
-            }
-            else if(count != MPI_UNDEFINED && err == MPI_SUCCESS)
-            {
-                std::cout << "Receiving queued double message ..." << std::endl << std::flush;
-                image_datatype *buf = new image_datatype[count];
-                MPI_Recv(buf, count, MPI_IMAGE_DATATYPE, MPI_ANY_SOURCE, MPI_ANY_TAG, intercomm, &status);
-                delete [] buf;
-            }
-            else
-            {
-                MPI_Abort(intercomm, -13);
-            }
-        }
-        else
-        {
-            break;
-        }
+        MPI_Cancel(&request_image_data);
+        MPI_Request_free(&request_image_data);
     }
 }
 
@@ -221,7 +179,6 @@ void MainWindow::setupColorMapDemo(QCustomPlot *customPlot)
 
 void MainWindow::realtimeDataSlot()
 {
-    static MPI_Request request_image_data = MPI_REQUEST_NULL;
     static QTime time(QTime::currentTime());
     double key = time.elapsed()/1000.0; // time elapsed since start of demo, in seconds
     const int nx = SIZE_X;
@@ -240,7 +197,10 @@ void MainWindow::realtimeDataSlot()
     {
         int flag = 0;
         if (request_image_data != MPI_REQUEST_NULL)
+        {
             MPI_Test(&request_image_data, &flag, MPI_STATUS_IGNORE);
+        }
+
         if (flag) // received image_data
         {
             request_image_data = MPI_REQUEST_NULL;
@@ -302,6 +262,12 @@ void MainWindow::realtimeDataSlot()
                     {
                         // close connections
                         std::cout << "Received disconnect message from server program" << std::endl << std::flush;
+                        if (request_image_data != MPI_REQUEST_NULL)
+                        {
+                            std::cout << "Canceling request ..." << std::endl << std::flush;
+                            MPI_Cancel(&request_image_data);
+                            MPI_Request_free(&request_image_data);
+                        }
                         std::cout << "Disconnecting ..." << std::endl << std::flush;
                         MPI_Comm_disconnect(&intercomm);
                         std::cout << "Disconnected" << std::endl << std::flush;
