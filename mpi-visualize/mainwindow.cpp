@@ -78,8 +78,7 @@ MainWindow::~MainWindow()
         {
             std::cout << "Sending disconnect message to server program" << std::endl << std::flush;
             int message_type = 1;
-            MPI_Request request;
-            MPI_Isend(&message_type, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm, &request);
+            MPI_Ssend(&message_type, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm);
 
             receivePendingMessages();
 
