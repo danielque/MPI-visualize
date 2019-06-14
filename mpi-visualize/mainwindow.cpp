@@ -76,7 +76,7 @@ MainWindow::~MainWindow()
     {
         if (connected)
         {
-            std::cout << "Sending disconnect message" << std::endl << std::flush;
+            std::cout << "Sending disconnect message to server program" << std::endl << std::flush;
             int message_type = 1;
             MPI_Request request;
             MPI_Isend(&message_type, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm, &request);
@@ -272,7 +272,7 @@ void MainWindow::realtimeDataSlot()
             messageAvailable = 0;
             if (MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, intercomm, &messageAvailable, &status) != MPI_SUCCESS)
             {
-                std::cerr << "Error probing for MPI message!" << std::endl;
+                std::cerr << "Error probing for MPI message!" << std::endl << std::flush;
                 MPI_Abort(intercomm, -11);
             }
 
@@ -302,7 +302,7 @@ void MainWindow::realtimeDataSlot()
                     MPI_Recv(&message, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm, MPI_STATUS_IGNORE);
                     {
                         // close connections
-                        std::cout << "Received disconnection message" << std::endl << std::flush;
+                        std::cout << "Received disconnect message from server program" << std::endl << std::flush;
                         std::cout << "Disconnecting ..." << std::endl << std::flush;
                         MPI_Comm_disconnect(&intercomm);
                         std::cout << "Disconnected" << std::endl << std::flush;

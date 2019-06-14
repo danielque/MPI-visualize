@@ -39,9 +39,9 @@ static MPI_Request diconnect_request = MPI_REQUEST_NULL;
 
 /* ------------------------------------------------------------------------- */
 
-int  mpiConnect(char* port_name, MPI_Comm *comm);
-void mpiDisconnect(const char* port_name, MPI_Comm *comm);
-int  mpiIsIntercommAlive(const char* port_name, MPI_Comm *comm);
+int  mpiConnect(char* port_name, MPI_Comm* comm);
+void mpiDisconnect(const char* port_name, MPI_Comm* comm);
+int  mpiIsIntercommAlive(const char* port_name, MPI_Comm* comm);
 
 /* ------------------------------------------------------------------------- */
 
@@ -120,8 +120,8 @@ int main(int argc, char** argv)
         {
             for (xIndex = 0; xIndex < nx; ++xIndex)
             {
-                x = (1.0* xIndex)                   / SIZE_X * 8.0 - 4.0; // scale to [-4,4]
-                y = (yIndex + 1.0 * ny * world_rank)/ SIZE_Y * 8.0 - 4.0; // scale to [-4,4]
+                x = (1.0 * xIndex)                   / SIZE_X * 8.0 - 4.0; // scale to [-4,4]
+                y = (yIndex + 1.0 * ny * world_rank) / SIZE_Y * 8.0 - 4.0; // scale to [-4,4]
                 r = 3.0 * sqrt(x * x + y * y) + 1e-2;
                 z = 2.0 * x * (cos(r + 2.) / r - sin(r + 2.) / r);
                 image_part_base[xIndex + yIndex * nx] = z;
@@ -161,8 +161,8 @@ int main(int argc, char** argv)
             if (time - last_send_time > 0.03333) // ~30fps should be enough for visualization
             {
                 // collect image data
-                MPI_Gather(image_part, SIZE_X*SIZE_Y_HALF, MPI_IMAGE_DATATYPE,
-                           image_data, SIZE_X*SIZE_Y_HALF, MPI_IMAGE_DATATYPE,
+                MPI_Gather(image_part, SIZE_X * SIZE_Y_HALF, MPI_IMAGE_DATATYPE,
+                           image_data, SIZE_X * SIZE_Y_HALF, MPI_IMAGE_DATATYPE,
                            0, MPI_COMM_WORLD);
 
                 // send data to visualization program
@@ -205,7 +205,7 @@ int main(int argc, char** argv)
         printf("%d: end time = %lf, frames %d (sent %d), FPS %lf, sFPS %lf\n",
                world_rank, time,
                frames, sent_frames,
-               frames/(time - start_time), sent_frames/(time - start_time));
+               frames / (time - start_time), sent_frames / (time - start_time));
         fflush(stdout);
     }
 
@@ -219,7 +219,6 @@ int main(int argc, char** argv)
             int message = 1;
             printf("Sending disconnection message\n"); fflush(stdout);
             MPI_Ssend(&message, 1, MPI_INT, 0, MPI_TAG_MESSAGE_QUIT, intercomm);
-
             connected = mpiIsIntercommAlive(port_name, &intercomm);
 
             if (connected)
@@ -243,7 +242,7 @@ int main(int argc, char** argv)
 
 /* ------------------------------------------------------------------------- */
 
-int mpiConnect(char* port_name, MPI_Comm *comm)
+int mpiConnect(char* port_name, MPI_Comm* comm)
 {
     // write port name to file
     FILE* port_file = 0;
@@ -305,12 +304,12 @@ int mpiConnect(char* port_name, MPI_Comm *comm)
     }
 
     // accept connection from client (blocks until client called MPI_Comm_connect)
-    printf("Waiting for intercomm\n");
+    printf("Waiting for intercomm ...\n");  fflush(stdout);
     MPI_Comm_accept(port_name, MPI_INFO_NULL, 0, MPI_COMM_SELF, comm);
 
     if (*comm == MPI_COMM_NULL)
     {
-        printf("Error: no intercommunicator!\n");fflush(stdout);
+        printf("Error: no intercommunicator!\n"); fflush(stdout);
         return 0;
     }
 
@@ -320,14 +319,14 @@ int mpiConnect(char* port_name, MPI_Comm *comm)
 
 /* ------------------------------------------------------------------------- */
 
-void mpiDisconnect(const char* port_name, MPI_Comm *comm)
+void mpiDisconnect(const char* port_name, MPI_Comm* comm)
 {
     MPI_Close_port(port_name);
     printf("Port closed\n"); fflush(stdout);
 
     if (*comm == MPI_COMM_NULL)
     {
-        printf("Communicator is already NULL!\n");fflush(stdout);
+        printf("Communicator is already NULL!\n"); fflush(stdout);
         return;
     }
 
@@ -339,7 +338,7 @@ void mpiDisconnect(const char* port_name, MPI_Comm *comm)
 
 /* ------------------------------------------------------------------------- */
 
-int mpiIsIntercommAlive(const char* port_name, MPI_Comm *comm)
+int mpiIsIntercommAlive(const char* port_name, MPI_Comm* comm)
 {
     MPI_Comm intercomm = *comm;
 
@@ -376,8 +375,8 @@ int mpiIsIntercommAlive(const char* port_name, MPI_Comm *comm)
 
         if (flag) // received quit message
         {
-            printf("Received quit message from client program'\n"); fflush(stdout);
-            mpiDisconnect(port_name,comm);
+            printf("Received disconnect message from client program'\n"); fflush(stdout);
+            mpiDisconnect(port_name, comm);
             return 0;
         }
     }
